@@ -1,11 +1,16 @@
-// 初始化 GUN
+// 初始化 GUN，增加多個伺服器節點以提高可靠性
 const gun = Gun({
-    peers: ['https://gun-manhattan.herokuapp.com/gun']
+    peers: [
+        'https://gun-manhattan.herokuapp.com/gun',
+        'https://gun-us.herokuapp.com/gun',
+        'https://gun-eu.herokuapp.com/gun'
+    ],
+    localStorage: false // 避免本地存儲衝突
 });
 
 // 遊戲狀態
-const gameState = gun.get('hearts-game');
-const players = gun.get('hearts-players');
+const gameState = gun.get('hearts-game-2025'); // 使用唯一的遊戲 ID
+const players = gun.get('hearts-players-2025');
 let currentPlayer = null;
 let myCards = [];
 
@@ -20,6 +25,11 @@ const playersDiv = document.getElementById('players');
 const centerPileDiv = document.getElementById('centerPile');
 const playerHandDiv = document.getElementById('playerHand');
 const gameStatusDiv = document.getElementById('gameStatus');
+
+// 顯示遊戲狀態
+function updateGameStatus(message) {
+    gameStatusDiv.textContent = message;
+}
 
 // 創建一副撲克牌
 function createDeck() {
@@ -46,18 +56,29 @@ function shuffle(array) {
 // 加入遊戲
 joinGameBtn.addEventListener('click', () => {
     const name = playerNameInput.value.trim();
-    if (!name) return;
+    if (!name) {
+        updateGameStatus('請輸入名字！');
+        return;
+    }
     
     currentPlayer = {
         id: Math.random().toString(36).substr(2, 9),
         name: name,
-        cards: []
+        cards: [],
+        connected: true,
+        lastActive: Date.now()
     };
     
-    players.set(currentPlayer);
-    loginSection.classList.add('hidden');
-    gameRoom.classList.remove('hidden');
-    startGameBtn.classList.remove('hidden');
+    try {
+        players.set(currentPlayer);
+        loginSection.classList.add('hidden');
+        gameRoom.classList.remove('hidden');
+        startGameBtn.classList.remove('hidden');
+        updateGameStatus(`歡迎 ${name} 加入遊戲！`);
+    } catch (error) {
+        updateGameStatus('加入遊戲失敗，請重試！');
+        console.error('加入遊戲失敗：', error);
+    }
 });
 
 // 監聽玩家加入
