@@ -8,11 +8,8 @@ function log(message) {
 // 初始化 GUN
 log('正在初始化 GUN...');
 const gun = Gun({
-    peers: [
-        'https://gun-manhattan.herokuapp.com/gun'
-    ],
-    localStorage: false,
-    radisk: false
+    localStorage: true,
+    peers: [] // 不使用外部節點，純本地模式
 });
 
 // 確認 GUN 連線狀態
@@ -24,9 +21,11 @@ gun.on('bye', peer => {
     log(`節點斷開: ${peer}`);
 });
 
-// 遊戲狀態
-const gameState = gun.get('hearts-game-' + Math.random()); // 使用隨機遊戲房間
-const players = gun.get('hearts-players-' + Math.random());
+// 遊戲狀態 - 使用固定的遊戲房間名稱
+const GAME_ID = 'hearts-game-local';
+const PLAYERS_ID = 'hearts-players-local';
+const gameState = gun.get(GAME_ID);
+const players = gun.get(PLAYERS_ID);
 let currentPlayer = null;
 let myCards = [];
 
@@ -70,6 +69,28 @@ function shuffle(array) {
     return array;
 }
 
+// 初始化時重置遊戲狀態
+function resetGame() {
+    log('重置遊戲狀態...');
+    gameState.put({
+        status: 'waiting',
+        centerPile: [],
+        currentPlayerIndex: 0,
+        deck: null,
+        timestamp: Date.now()
+    });
+    players.put(null); // 清除所有玩家
+    currentPlayer = null;
+    myCards = [];
+    updateGameStatus('遊戲已重置，請輸入名字加入遊戲');
+}
+
+// 在程式開始時重置遊戲
+window.addEventListener('load', () => {
+    resetGame();
+    log('遊戲已初始化');
+});
+
 // 加入遊戲
 joinGameBtn.addEventListener('click', () => {
     const name = playerNameInput.value.trim();
@@ -80,24 +101,31 @@ joinGameBtn.addEventListener('click', () => {
     
     log(`玩家 ${name} 嘗試加入遊戲...`);
     
-    currentPlayer = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: name,
-        cards: [],
-        connected: true,
-        lastActive: Date.now()
-    };
-    
-    try {
-        players.set(currentPlayer);
-        loginSection.classList.add('hidden');
-        gameRoom.classList.remove('hidden');
-        startGameBtn.classList.remove('hidden');
-        updateGameStatus(`歡迎 ${name} 加入遊戲！`);
-    } catch (error) {
-        updateGameStatus('加入遊戲失敗，請重試！');
-        log('錯誤：' + error.message);
-    }
+    gameState.once((state) => {
+        if (state.status === 'playing') {
+            updateGameStatus('遊戲已經開始，請等待下一局');
+            return;
+        }
+        
+        currentPlayer = {
+            id: Math.random().toString(36).substr(2, 9),
+            name: name,
+            cards: [],
+            connected: true,
+            lastActive: Date.now()
+        };
+        
+        try {
+            players.set(currentPlayer);
+            loginSection.classList.add('hidden');
+            gameRoom.classList.remove('hidden');
+            startGameBtn.classList.remove('hidden');
+            updateGameStatus(`歡迎 ${name} 加入遊戲！`);
+        } catch (error) {
+            updateGameStatus('加入遊戲失敗，請重試！');
+            log('錯誤：' + error.message);
+        }
+    });
 });
 
 // 監聽玩家加入
@@ -124,31 +152,58 @@ function updatePlayersList() {
 
 // 開始遊戲
 startGameBtn.addEventListener('click', () => {
+    log('嘗試開始遊戲...');
     const deck = createDeck();
+    log('牌組已創建');
+
     gameState.put({
         status: 'playing',
         centerPile: [],
         currentPlayerIndex: 0,
-        deck: deck
+        deck: deck,
+        timestamp: Date.now()
     });
-    
-    // 發牌
-    players.map().once((player, id) => {
-        if (!player) return;
-        const playerCards = deck.splice(0, Math.floor(52 / 4));
-        players.get(id).put({ ...player, cards: playerCards });
-    });
+    log('遊戲狀態已更新');
+
+    try {
+        // 發牌
+        let playerCount = 0;
+        players.map().once((player, id) => {
+            if (!player) return;
+            playerCount++;
+            log(`正在發牌給玩家 ${player.name}`);
+            const playerCards = deck.splice(0, Math.floor(52 / 4));
+            players.get(id).put({ 
+                ...player, 
+                cards: playerCards,
+                lastUpdated: Date.now()
+            });
+        });
+
+        log(`共有 ${playerCount} 位玩家加入遊戲`);
+        updateGameStatus('遊戲開始！');
+    } catch (error) {
+        log('開始遊戲時發生錯誤：' + error.message);
+        updateGameStatus('開始遊戲失敗，請重試！');
+    }
 });
 
 // 監聽遊戲狀態
 gameState.on((state) => {
-    if (!state) return;
+    if (!state) {
+        log('無法獲取遊戲狀態');
+        return;
+    }
+    
+    log('收到遊戲狀態更新：' + JSON.stringify(state));
     
     if (state.status === 'playing') {
+        log('遊戲狀態已變更為進行中');
         startGameBtn.classList.add('hidden');
         slapBtn.classList.remove('hidden');
         updateCenterPile(state.centerPile || []);
         updatePlayerHand();
+        updateGameStatus('遊戲進行中！');
     }
 });
 
