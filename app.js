@@ -1,16 +1,32 @@
-// 初始化 GUN，增加多個伺服器節點以提高可靠性
+// 除錯功能
+const debug = document.getElementById('debug');
+function log(message) {
+    debug.innerHTML += `<div>${message}</div>`;
+    console.log(message);
+}
+
+// 初始化 GUN
+log('正在初始化 GUN...');
 const gun = Gun({
     peers: [
-        'https://gun-manhattan.herokuapp.com/gun',
-        'https://gun-us.herokuapp.com/gun',
-        'https://gun-eu.herokuapp.com/gun'
+        'https://gun-manhattan.herokuapp.com/gun'
     ],
-    localStorage: false // 避免本地存儲衝突
+    localStorage: false,
+    radisk: false
+});
+
+// 確認 GUN 連線狀態
+gun.on('hi', peer => {
+    log(`已連接到節點: ${peer}`);
+});
+
+gun.on('bye', peer => {
+    log(`節點斷開: ${peer}`);
 });
 
 // 遊戲狀態
-const gameState = gun.get('hearts-game-2025'); // 使用唯一的遊戲 ID
-const players = gun.get('hearts-players-2025');
+const gameState = gun.get('hearts-game-' + Math.random()); // 使用隨機遊戲房間
+const players = gun.get('hearts-players-' + Math.random());
 let currentPlayer = null;
 let myCards = [];
 
@@ -28,6 +44,7 @@ const gameStatusDiv = document.getElementById('gameStatus');
 
 // 顯示遊戲狀態
 function updateGameStatus(message) {
+    log(message);
     gameStatusDiv.textContent = message;
 }
 
@@ -61,6 +78,8 @@ joinGameBtn.addEventListener('click', () => {
         return;
     }
     
+    log(`玩家 ${name} 嘗試加入遊戲...`);
+    
     currentPlayer = {
         id: Math.random().toString(36).substr(2, 9),
         name: name,
@@ -77,13 +96,14 @@ joinGameBtn.addEventListener('click', () => {
         updateGameStatus(`歡迎 ${name} 加入遊戲！`);
     } catch (error) {
         updateGameStatus('加入遊戲失敗，請重試！');
-        console.error('加入遊戲失敗：', error);
+        log('錯誤：' + error.message);
     }
 });
 
 // 監聽玩家加入
 players.map().on((player, id) => {
     if (!player) return;
+    log(`偵測到玩家更新：${player.name}`);
     updatePlayersList();
     if (id === currentPlayer?.id) {
         startGameBtn.classList.remove('hidden');

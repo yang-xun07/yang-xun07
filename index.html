@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>多人心臟病</title>
     <link rel="stylesheet" href="style.css">
-    <!-- GUN.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/gun/sea.js"></script>
-    <script src="app.js" defer></script>
 </head>
 <body>
     <div class="container">
@@ -25,6 +21,12 @@
             <button id="startGame" class="hidden">開始遊戲</button>
             <button id="slap" class="hidden">拍牌！</button>
         </div>
+        <div id="debug"></div>
     </div>
+    <!-- 先載入 GUN.js 相關函式庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/sea.js"></script>
+    <!-- 最後載入我們的應用程式碼 -->
+    <script src="app.js"></script>
 </body>
 </html>
