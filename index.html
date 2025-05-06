@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多人心臟病</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- GUN.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/sea.js"></script>
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <h1>多人心臟病</h1>
+        <div id="login" class="section">
+            <input type="text" id="playerName" placeholder="輸入你的名字">
+            <button id="joinGame">加入遊戲</button>
+        </div>
+        <div id="gameRoom" class="section hidden">
+            <div id="players"></div>
+            <div id="gameStatus"></div>
+            <div id="centerPile"></div>
+            <div id="playerHand"></div>
+            <button id="startGame" class="hidden">開始遊戲</button>
+            <button id="slap" class="hidden">拍牌！</button>
+        </div>
+    </div>
+</body>
+</html>
